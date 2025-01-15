@@ -19,10 +19,10 @@ This project is a FastAPI-based application that allows users to search for rese
 ```bash
 1.git clone https://github.com/vaibhav071104/smart-research-project.git
 
-2.cd backend
+2.cd  smart-research-project-main
 
-3.python -m venv venv
-venv\Scripts\activate
+3.python3 -m venv venv
+source venv/bin/activate
 
 4.pip install -r requirements.txt
 
