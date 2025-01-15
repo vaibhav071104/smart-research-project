@@ -1,6 +1,3 @@
-# smart-research-project
-# smart-research-project
-
 # Research Paper Assistant
 
 # backend 
