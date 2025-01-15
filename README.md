@@ -21,10 +21,10 @@ This project is a FastAPI-based application that allows users to search for rese
 
 2.cd backend
 
-3.pip install -r requirements.txt
-
-4.python -m venv venv
+3.python -m venv venv
 venv\Scripts\activate
+
+4.pip install -r requirements.txt
 
 5.uvicorn app:app --reload
 
