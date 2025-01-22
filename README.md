@@ -17,6 +17,7 @@ This project is a FastAPI-based application that allows users to search for rese
 
 ### 1. Clone the Repository
 ```bash
+THESE STEPS ARE TO RUN IT VIA DOCKER
 1.git clone https://github.com/vaibhav071104/smart-research-project.git
 
 2.cd  smart-research-project-main
