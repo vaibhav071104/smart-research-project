@@ -28,6 +28,8 @@ source venv/bin/activate
 
 5.uvicorn app:app --reload
 
+6. after opening fast refer to the the .txt file (api that can be used) 
+
 ## to install wsl 
 1. Open PowerShell or Windows Command Prompt in administrator mode by right-clicking and selecting "Run as administrator"
 
