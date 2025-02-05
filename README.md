@@ -1,5 +1,7 @@
 # Research Paper Assistant
 
+#NAVIGATE TO RESEARCH-PAPER-SEARCH 2 FOR FRONTEND SETUP
+
 # backend 
 
 This project is a FastAPI-based application that allows users to search for research papers and get topic suggestions using the Semantic Scholar API.
@@ -57,5 +59,5 @@ to explore different api for different endpoints
 2. wsl --install
 
 
-NAVIGATE TO RESEARCH-APAER-SEARCH 2 FOR FRONTEND SETUP
+NAVIGATE TO RESEARCH-PAPER-SEARCH 2 FOR FRONTEND SETUP
 
