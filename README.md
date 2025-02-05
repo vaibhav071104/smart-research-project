@@ -55,3 +55,7 @@ to explore different api for different endpoints
 1. Open PowerShell or Windows Command Prompt in administrator mode by right-clicking and selecting "Run as administrator"
 
 2. wsl --install
+
+
+NAVIGATE TO RESEARCH-APAER-SEARCH 2 FOR FRONTEND SETUP
+
