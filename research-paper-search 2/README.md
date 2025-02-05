@@ -21,5 +21,10 @@ Follow these instructions to set up and run the project locally.
    cd research-paper-search 2
 
 2.npm install
+
+
 3.npm install -D postcss-import postcss-nesting
+
+
+
 4. npm run dev
