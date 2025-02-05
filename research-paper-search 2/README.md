@@ -16,7 +16,7 @@ Follow these instructions to set up and run the project locally.
 1. Clone the repository:
 
    ```sh
-   git clone 
+   git clone https://github.com/vaibhav071104/smart-research-project.git
    cd smart-research-project-main
    cd research-paper-search 2
 
