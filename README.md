@@ -16,7 +16,13 @@ Installation
 1. Clone the repository:
 
 git clone https://github.com/vaibhav071104/smart-research-project.git
+
+
 cd smart-research-project-main
+
+
+
+
 cd research-paper-search 2
 
 
