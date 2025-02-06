@@ -25,9 +25,11 @@ Follow these instructions to set up and run the project locally.
 
 3.npm install -D postcss-import postcss-nesting
 
+4. npm run dev
+
 
 5. FOR VIEWING THE SNOWBALLING REFERENCES YOU CAN COPY PASTE THE PAPER IDS WHICH CONSISTS OF LETTERS AND NUMBERS AT THE END OF THE URL OF THE PAPER 
 
 
 
-4. npm run dev
+
