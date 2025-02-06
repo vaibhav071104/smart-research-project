@@ -26,11 +26,18 @@ cd smart-research-project-main
 cd research-paper-search 2
 
 
+
 2.npm install
+
+
 
 3.npm install -D postcss-import postcss-nesting
 
+
+
 4. npm run dev
+
+   
 
 5.FOR VIEWING THE SNOWBALLING REFERENCES YOU CAN COPY PASTE THE PAPER IDS WHICH CONSISTS OF LETTERS AND NUMBERS AT THE END OF THE URL OF THE PAPER
 
