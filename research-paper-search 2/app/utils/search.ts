@@ -1,12 +1,14 @@
 import axios from "axios"
 import type { Paper } from "../types"
 
-const axiosInstance = axios.create({
-  baseURL: "/api",
-  headers: {
-    "Content-Type": "application/json",
-  },
-})
+const URL = "http://localhost:8000/api"
+
+// const axiosInstance = axios.create({
+//   baseURL: "/api",
+//   headers: {
+//     "Content-Type": "application/json",
+//   },
+// })
 
 const validatePaper = (paper: any): Paper => {
   return {
@@ -25,7 +27,7 @@ const validatePaper = (paper: any): Paper => {
 export const fetchSuggestions = async (input: string, apiType: string): Promise<string[]> => {
   try {
     console.log("Fetching suggestions for:", input, "API:", apiType)
-    const response = await axiosInstance.get("/suggest", {
+    const response = await axios.get(`${URL}/suggest`, {
       params: { q: input, api: apiType },
     })
 
@@ -69,7 +71,7 @@ export const fetchSuggestions = async (input: string, apiType: string): Promise<
 export const performSearch = async (searchQuery: string, year: string, apiType: string): Promise<Paper[]> => {
   try {
     console.log("Sending search request:", { searchQuery, year, apiType })
-    const response = await axiosInstance.post("/search_papers", {
+    const response = await axios.post(`${URL}/search_papers`, {
       query: searchQuery,
       year: year ? Number.parseInt(year) : undefined,
       api: apiType,
@@ -105,7 +107,7 @@ export const fetchReferences = async (paperId: string): Promise<Paper[]> => {
     }
 
     console.log("Fetching references for paper:", paperId)
-    const response = await axiosInstance.post("/download_references", {
+    const response = await axios.post(`${URL}/download_references`, {
       paper_id: paperId,
       depth: 1,
     })
