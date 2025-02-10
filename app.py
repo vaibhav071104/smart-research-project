@@ -14,7 +14,9 @@ import json
 from fastapi.responses import FileResponse
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
-import fitz 
+import fitz
+import uvicorn
+from fastapi.middleware.cors import CORSMiddleware
 
 # Load environment variables
 load_dotenv()
@@ -29,7 +31,17 @@ nltk.download('averaged_perceptron_tagger')
 nltk.download('wordnet')
 nltk.download('omw-1.4')
 
-app = FastAPI()
+backend = FastAPI(title="backend")
+backend.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app = FastAPI(title="app")
+app.mount("/api", backend)
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -47,21 +59,21 @@ class PaperID(BaseModel):
     paper_id: str
     api: str = "semantic_scholar"  # Default to Semantic Scholar
 
-def make_request_with_retry(url, params=None, headers=None, max_retries=3, delay=5):
-    for i in range(max_retries):
-        try:
-            response = requests.get(url, params=params, headers=headers)
-            if response.status_code == 200:
-                return response
-            elif response.status_code == 429:
-                logging.warning(f"Rate limit exceeded. Attempt {i+1}: Retrying after {delay} seconds.")
-                time.sleep(delay)
-                delay *= 2  # Exponential backoff
-            else:
-                logging.error(f"Attempt {i+1}: Failed request - Status Code: {response.status_code}, Raw Response: {response.text}")
-        except requests.RequestException as e:
-            logging.error(f"Attempt {i+1}: Request exception - {e}")
-    return None
+# def make_request_with_retry(url, params=None, headers=None, max_retries=3, delay=5):
+#     for i in range(max_retries):
+#         try:
+#             response = requests.get(url, params=params, headers=headers)
+#             if response.status_code == 200:
+#                 return response
+#             elif response.status_code == 429:
+#                 logging.warning(f"Rate limit exceeded. Attempt {i+1}: Retrying after {delay} seconds.")
+#                 time.sleep(delay)
+#                 delay *= 2  # Exponential backoff
+#             else:
+#                 logging.error(f"Attempt {i+1}: Failed request - Status Code: {response.status_code}, Raw Response: {response.text}")
+#         except requests.RequestException as e:
+#             logging.error(f"Attempt {i+1}: Request exception - {e}")
+#     return None
 
 def construct_query(query: str) -> str:
     terms = query.split()
@@ -84,7 +96,8 @@ def construct_query(query: str) -> str:
 def get_semantic_scholar_suggestions(query):
     semantic_query = construct_query(query)
     url = f'https://api.semanticscholar.org/graph/v1/paper/search?query={semantic_query}&fields=title,url,abstract'
-    response = make_request_with_retry(url)
+    response = requests.get(url)
+    print(response)
     if not response:
         return []
     results = response.json().get('data', [])
@@ -95,9 +108,10 @@ def fetch_doaj_papers(query, year=None):
     url = f'https://doaj.org/api/v1/search/articles/{query}'
     params = {
         "api_key": DOAJ_API_KEY,
-        "pageSize": 100
+        "pageSize": 10
     }
-    response = make_request_with_retry(url, params=params)
+    response = requests.get(url, params=params)
+    print(response)
     if response.status_code != 200:
         logging.error(f"Failed to fetch DOAJ papers: Status Code: {response.status_code}, Raw Response: {response.text}")
         return []
@@ -118,7 +132,7 @@ def fetch_doaj_papers(query, year=None):
     return papers
 
 
-@app.post("/search_papers")
+@backend.post("/search_papers")
 async def search_papers(search_query: SearchQuery):
     query = search_query.query
     year = search_query.year
@@ -130,15 +144,15 @@ async def search_papers(search_query: SearchQuery):
     try:
         if api == "semantic_scholar":
             semantic_query = construct_query(query)
-            url = f'https://api.semanticscholar.org/graph/v1/paper/search?query={semantic_query}&fields=title,url,abstract,year&limit=100'
-            response = make_request_with_retry(url)
+            url = f'https://api.semanticscholar.org/graph/v1/paper/search?query={semantic_query}&fields=title,url,abstract,year&limit=10'
+            response = requests.get(url)
             search_results = response.json().get('data', [])
             if year:
                 search_results = [result for result in search_results if result.get('year') == year]
             papers = [{"title": result['title'], "url": result['url'], "snippet": result.get('abstract', '')} for result in search_results]
         elif api == "arxiv_papers":
-            url = f'http://export.arxiv.org/api/query?search_query={query}&start=0&max_results=100'
-            response = make_request_with_retry(url)
+            url = f'http://export.arxiv.org/api/query?search_query={query}&start=0&max_results=10'
+            response = requests.get(url)
             entries = response.text.split("<entry>")
             papers = []
             for entry in entries[1:]:
@@ -159,7 +173,7 @@ async def search_papers(search_query: SearchQuery):
         logging.error(f"Error processing search_papers request: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-@app.get("/suggest")
+@backend.get("/suggest")
 async def suggest(q: str = Query(..., min_length=3, description="The user's input query to get suggestions for"), api: str = "semantic_scholar"):
     current_time = time.time()
     if q in suggestions_cache and (current_time - suggestions_cache[q]['time']) < CACHE_EXPIRY_TIME:
@@ -191,7 +205,7 @@ def fetch_references(paper_id, api):
     elif api == "doaj":
         # Implement fetch references for DOAJ if applicable
         pass
-    response = requests.get(url)
+    response = requests.get.get(url)
     if response.status_code != 200:
         logging.error(f"Failed to fetch references: Status Code: {response.status_code}, Raw Response: {response.text}")
         return []
@@ -225,7 +239,7 @@ def fetch_references_recursive(paper_id, api, depth=1):
 
 
 
-@app.post("/download_references")
+@backend.post("/download_references")
 async def download_references(paper: PaperID, depth: int = 1):
     if paper.api == "semantic_scholar":
         references = fetch_references_recursive(paper.paper_id, paper.api, depth)
@@ -244,7 +258,7 @@ async def download_references(paper: PaperID, depth: int = 1):
     
     return FileResponse("references.json", media_type='application/json')
 
-@app.get("/")
+@backend.get("/")
 async def read_root():
     return {"message": "Welcome to the Research Paper Assistant API. Use /docs for interactive API documentation."}
 
@@ -264,3 +278,7 @@ def filter_by_year(references, start_year, end_year):
                 continue
         filtered_references.append(ref)
     return filtered_references
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
