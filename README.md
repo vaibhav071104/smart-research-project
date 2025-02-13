@@ -41,6 +41,28 @@ cd research-paper-search 2
 
 5.FOR VIEWING THE SNOWBALLING REFERENCES YOU CAN COPY PASTE THE PAPER IDS WHICH CONSISTS OF LETTERS AND NUMBERS AT THE END OF THE URL OF THE PAPER
 
+# FOR STARTING YOUR REDIS DB
+
+1.cd  smart-research-project-main
+
+2.sudo nano /etc/redis/redis.conf
+# enter this 
+bind 127.0.0.1
+port 6379
+
+3.sudo systemctl start redis
+
+4. for checking the status 
+ sudo systemctl status redis
+
+
+
+
+# FOR VIEWING YOU CACHE STORED IN REDIS DB
+
+1.cd  smart-research-project-main
+2. docker exec -it redis redis-cli
+
 # backend 
 
 This project is a FastAPI-based application that allows users to search for research papers and get topic suggestions using the Semantic Scholar API.
@@ -63,17 +85,19 @@ THESE STEPS ARE TO RUN IT VIA DOCKER
 
 2.cd  smart-research-project-main
 
-3.docker build -t smart-research-project .
+3.source venv/bin/activate
 
-4.docker run -d -p 8000:8000 smart-research-project
+4.docker compose build
 
-5.You can access the automatically generated interactive API documentation at
+5.docker compose up
+
+6.You can access the automatically generated interactive API documentation at
  http://localhost:8000/docs
 
-6.if you want to check  the processing in your terminal you can
+7. if you want to check  the processing in your terminal you can
 docker logs <container_id>
 
-7. after opening fast api refer to the the .txt file (api that can be used)
+8. after opening fast api refer to the the .txt file (api that can be used)
 to explore different api for different endpoints
 
 IF YOU WANT TO RUN IT LOCALLY (WITHOUT DOCKER)
