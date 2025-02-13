@@ -61,7 +61,14 @@ port 6379
 # FOR VIEWING YOU CACHE STORED IN REDIS DB
 
 1.cd  smart-research-project-main
+
+
+
+
 2. docker exec -it redis redis-cli
+
+
+3. 127.0.0.1:6379> KEYS *
 
 # backend 
 
