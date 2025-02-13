@@ -47,7 +47,11 @@ cd research-paper-search 2
 
 2.sudo nano /etc/redis/redis.conf
 # enter this 
+
 bind 127.0.0.1
+
+
+
 port 6379
 
 3.sudo systemctl start redis
