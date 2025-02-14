@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useEffect, useState, useCallback } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { ThemeProvider, createTheme, styled } from "@mui/material/styles"
 import { Container, Box, Typography, Button, CircularProgress, Card, CardContent } from "@mui/material"
 import {
@@ -102,14 +102,23 @@ const StyledCardContent = styled(CardContent)({
 })
 
 const PaperIdCode = styled("code")({
-  backgroundColor: "rgba(255, 255, 255, 0.9)",
-  padding: "0.5rem 1rem",
-  borderRadius: "8px",
-  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif",
-  fontSize: "0.875rem",
-  color: "#1a1a1a",
-  fontWeight: 500,
-  boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+  backgroundColor: "rgba(255, 255, 255, 0.95)",
+  padding: "0.75rem 1.25rem",
+  borderRadius: "12px",
+  fontFamily: "'JetBrains Mono', 'SF Mono', Consolas, monospace",
+  fontSize: "1rem",
+  color: "#2563eb",
+  display: "inline-block",
+  boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+  border: "1px solid rgba(37, 99, 235, 0.3)",
+  letterSpacing: "0.5px",
+})
+
+const PaperIdContainer = styled(Box)({
+  backgroundColor: "rgba(0, 0, 0, 0.2)",
+  borderRadius: "16px",
+  padding: "1.5rem",
+  marginTop: "1rem",
 })
 
 const HeaderContainer = styled(Box)({
@@ -117,19 +126,7 @@ const HeaderContainer = styled(Box)({
   justifyContent: "space-between",
   alignItems: "flex-start",
   marginBottom: "2rem",
-})
-
-const BackButton = styled(Button)({
-  backgroundColor: "#2563eb",
-  color: "white",
-  borderRadius: "8px",
-  padding: "8px 16px",
-  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif",
-  textTransform: "none",
-  fontWeight: 500,
-  "&:hover": {
-    backgroundColor: "#1d4ed8",
-  },
+  width: "100%",
 })
 
 interface CitedPaper {
@@ -138,12 +135,15 @@ interface CitedPaper {
   title: string
   abstract: string | null
   year: number
+  references?: CitedPaper[] // Add nested references for depth > 1
 }
 
 const ReferencesPage: React.FC = () => {
   const params = useParams()
+  const searchParams = useSearchParams()
   const router = useRouter()
   const paperId = params.paperId as string
+  const depth = Number(searchParams.get("depth") || "1") as 1 | 2
   const [papers, setPapers] = useState<CitedPaper[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -154,57 +154,71 @@ const ReferencesPage: React.FC = () => {
 
     setIsLoading(true)
     setError(null)
+    let data: any = undefined
+
     try {
-      console.log("Loading references for paper:", paperId)
-      const response = await fetch(`/api/download_references`, {
+      const apiUrl = "http://localhost:8000/api"
+      console.log(`Fetching references from: ${apiUrl}/download_references`)
+      const response = await fetch(`${apiUrl}/download_references`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           paper_id: paperId,
-          depth: 1,
+          depth: depth,
         }),
       })
 
-      const data = await response.json()
+      try {
+        data = await response.json()
+      } catch (jsonError) {
+        console.error("Error parsing JSON response:", jsonError)
+        setError("Failed to parse server response. Please try again later.")
+        return
+      }
+
       console.log("Raw response from /download_references:", data)
 
       if (Array.isArray(data)) {
-        const citedPapers = data
-          .map((item) => {
-            if (item.citedPaper) {
-              return item.citedPaper
-            } else if (item.paperId || item.id) {
-              return {
-                paperId: item.paperId || item.id,
-                url: item.url || `https://www.semanticscholar.org/paper/${item.paperId || item.id}`,
-                title: item.title || "Untitled Paper",
-                abstract: item.abstract || null,
-                year: item.year || new Date().getFullYear(),
+        const processReferences = (items: any[]): CitedPaper[] => {
+          return items
+            .map((item): CitedPaper | null => {
+              const paper = item.citedPaper || item
+              if (paper.paperId || paper.id) {
+                return {
+                  paperId: paper.paperId || paper.id,
+                  url: paper.url || `https://www.semanticscholar.org/paper/${paper.paperId || paper.id}`,
+                  title: paper.title || "Untitled Paper",
+                  abstract: paper.abstract || null,
+                  year: paper.year || new Date().getFullYear(),
+                  references: paper.references ? processReferences(paper.references) : undefined,
+                }
               }
-            }
-            return null
-          })
-          .filter(Boolean)
+              return null
+            })
+            .filter((paper): paper is CitedPaper => paper !== null)
+        }
 
-        if (citedPapers.length > 0) {
-          setPapers(citedPapers)
-          setError(null)
-        } else {
-          throw new Error("No valid paper data found in response")
+        const processedPapers = processReferences(data);
+        setPapers(processedPapers);
+
+        setError(null)
+
+        if (processedPapers.length === 0) {
+          console.log("No references found for this paper.")
         }
       } else {
         throw new Error("Unexpected response format from server")
       }
     } catch (err) {
-      console.error("Error loading references:", err)
+      console.error("Error loading references:", err, "Response data:", data)
       setError(err instanceof Error ? err.message : "Failed to load references")
       setPapers([])
     } finally {
       setIsLoading(false)
     }
-  }, [paperId])
+  }, [paperId, depth])
 
   const handleRetry = () => {
     setRetryCount((prev) => prev + 1)
@@ -215,53 +229,75 @@ const ReferencesPage: React.FC = () => {
     loadReferences()
   }, [loadReferences])
 
-  const renderPapers = () => {
-    return papers.map((paper, index) => (
-      <PaperCard key={index}>
-        <StyledCardContent>
-          <Typography className="paper-title">{paper.title || "Untitled Paper"}</Typography>
-          <Typography className="paper-url">{paper.url}</Typography>
+  const renderNestedReferences = (references: CitedPaper[], level = 0) => {
+    return (
+      <Box sx={{ ml: level > 0 ? 4 : 0 }}>
+        {references.map((paper, index) => (
+          <PaperCard key={index}>
+            <StyledCardContent>
+              <Typography className="paper-title">{paper.title || "Untitled Paper"}</Typography>
+              <Typography className="paper-url">{paper.url}</Typography>
 
-          <div className="paper-keywords">
-            {paper.title
-              .split(" ")
-              .filter((word) => word.length > 4)
-              .slice(0, 5)
-              .map((keyword, idx) => (
-                <span key={idx} className="keyword-chip">
-                  {keyword.toLowerCase()}
-                </span>
-              ))}
-          </div>
+              <div className="paper-keywords">
+                {paper.title
+                  .split(" ")
+                  .filter((word) => word.length > 4)
+                  .slice(0, 5)
+                  .map((keyword, idx) => (
+                    <span key={idx} className="keyword-chip">
+                      {keyword.toLowerCase()}
+                    </span>
+                  ))}
+              </div>
 
-          <Typography className="paper-abstract">{paper.abstract || "No abstract available."}</Typography>
-          <div className="paper-metadata">
-            <span>ID: {paper.paperId}</span>
-            {paper.year && <span>Year: {paper.year}</span>}
-            <Button
-              variant="contained"
-              size="small"
-              href={paper.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              startIcon={<LaunchIcon />}
-              sx={{
-                backgroundColor: "#2563eb",
-                color: "white",
-                "&:hover": {
-                  backgroundColor: "#1d4ed8",
-                },
-                textTransform: "none",
-                fontWeight: 500,
-                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif",
-              }}
-            >
-              View Paper
-            </Button>
-          </div>
-        </StyledCardContent>
-      </PaperCard>
-    ))
+              <Typography className="paper-abstract">{paper.abstract || "No abstract available."}</Typography>
+              <div className="paper-metadata">
+                <span>ID: {paper.paperId}</span>
+                {paper.year && <span>Year: {paper.year}</span>}
+                <Button
+                  variant="contained"
+                  size="small"
+                  href={paper.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  startIcon={<LaunchIcon />}
+                  sx={{
+                    backgroundColor: "#2563eb",
+                    color: "white",
+                    "&:hover": {
+                      backgroundColor: "#1d4ed8",
+                    },
+                    textTransform: "none",
+                    fontWeight: 500,
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                  }}
+                >
+                  View Paper
+                </Button>
+              </div>
+
+              {/* Render nested references if they exist */}
+              {paper.references && paper.references.length > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography
+                    sx={{
+                      fontSize: "0.875rem",
+                      fontWeight: 600,
+                      color: "#4b5563",
+                      mb: 2,
+                      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                    }}
+                  >
+                    Referenced Papers:
+                  </Typography>
+                  {renderNestedReferences(paper.references, level + 1)}
+                </Box>
+              )}
+            </StyledCardContent>
+          </PaperCard>
+        ))}
+      </Box>
+    )
   }
 
   return (
@@ -282,19 +318,21 @@ const ReferencesPage: React.FC = () => {
                 Paper References
               </Typography>
 
-              <Typography
-                variant="h2"
-                sx={{
-                  fontSize: "1.5rem",
-                  fontWeight: 400,
-                  color: "rgba(255, 255, 255, 0.9)",
-                  mb: 2,
-                }}
-              >
-                Showing references for paper ID:
-              </Typography>
+              <PaperIdContainer>
+                <Typography
+                  variant="h2"
+                  sx={{
+                    fontSize: "1.5rem",
+                    fontWeight: 400,
+                    color: "rgba(255, 255, 255, 0.9)",
+                    mb: 2,
+                  }}
+                >
+                  Showing references for paper ID (Depth: {depth}):
+                </Typography>
 
-              <PaperIdCode>{paperId}</PaperIdCode>
+                <PaperIdCode>{paperId}</PaperIdCode>
+              </PaperIdContainer>
             </Box>
 
             <BackButton startIcon={<ArrowBackIcon />} onClick={() => router.push("/search")}>
@@ -350,6 +388,7 @@ const ReferencesPage: React.FC = () => {
                 }}
               >
                 <Box sx={{ mb: 1 }}>Paper ID: {paperId}</Box>
+                <Box sx={{ mb: 1 }}>Depth: {depth}</Box>
                 <Box sx={{ mb: 1 }}>Attempt: {retryCount + 1}</Box>
                 <Box>Time: {new Date().toISOString()}</Box>
               </Box>
@@ -384,14 +423,31 @@ const ReferencesPage: React.FC = () => {
                 </Button>
               </Box>
             </Box>
-          ) : papers.length > 0 ? (
-            <Box sx={{ mt: 4 }}>{renderPapers()}</Box>
-          ) : null}
+          ) : (
+            <Box sx={{ mt: 4 }}>
+              {papers.length > 0 ? (
+                renderNestedReferences(papers)
+              ) : (
+                <Typography sx={{ color: "white", textAlign: "center" }}>
+                  No references found for this paper.
+                </Typography>
+              )}
+            </Box>
+          )}
         </Container>
       </GradientBackground>
     </ThemeProvider>
   )
 }
+
+const BackButton = styled(Button)({
+  backgroundColor: "rgba(255, 255, 255, 0.15)",
+  color: "white",
+  "&:hover": {
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
+  },
+  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+})
 
 export default ReferencesPage
 
